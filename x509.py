@@ -3,6 +3,7 @@ import hashlib
 import random
 import time
 import oqs
+import json
 
 class X509Extension:
     def __init__(self, oid, value, critical=False):
@@ -14,60 +15,6 @@ class X509Extension:
         """Serialize the extension to a string format."""
         critical_str = "critical" if self.critical else "non-critical"
         return f"{self.oid} : {self.value} [{critical_str}]"
-
-
-class CustomX509Certificate:
-    def __init__(self, subject, issuer, public_key, signer, validity_days):
-        self.version = 3  # X.509 v3
-        self.serial_number = self.generate_serial_number()
-        self.issuer = issuer
-        self.subject = subject
-        self.public_key = public_key
-        self.not_before = int(time.time())
-        self.not_after = self.not_before + (validity_days * 86400)  # validity in seconds
-        self.extensions = []  # List to hold extensions
-        self.signer = signer
-
-    def generate_serial_number(self):
-        """Generate a random serial number for the certificate."""
-        return random.randint(1, 2**160)
-
-    def add_extension(self, oid, value, critical=False):
-        """Add an extension to the certificate."""
-        extension = X509Extension(oid, value, critical)
-        self.extensions.append(extension)
-
-    def sign(self):
-        """Sign the certificate with the provided private key."""
-        cert_data = self.serialize()
-        hash_value = hashlib.sha256(cert_data.encode()).hexdigest()
-        
-        # Simulate signing by returning the hash value (in practice, you'd use the private key).
-        signature = self.signer.sign("Dilithium3", hash_value.encode())
-        return signature
-
-    def serialize(self):
-        """Serialize the certificate data into a string format."""
-        cert_data = f"""
-        Version: {self.version}
-        Serial Number: {self.serial_number}
-        Issuer: {self.issuer}
-        Subject: {self.subject}
-        Validity:
-            Not Before: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.not_before))}
-            Not After: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.not_after))}
-        Public Key: {base64.b64encode(self.public_key).decode()}
-        Extensions:
-            {self.serialize_extensions()}
-        """
-        return cert_data.strip()
-
-    def serialize_extensions(self):
-        """Serialize all extensions into a string format."""
-        return "\n            ".join(ext.serialize() for ext in self.extensions)
-
-    def __str__(self):
-        return self.serialize()
     
 class CustomX509Certificate:
     def __init__(self, subject, issuer, public_key, signer, validity_days):
@@ -98,7 +45,6 @@ class CustomX509Certificate:
         
         # Simulate signing by returning the hash value (in practice, you'd use the private key).
         self.signature = self.signer.sign(hash_value.encode())
-        return self.serialize_with_signature()
 
     def serialize(self):
         """Serialize the certificate data into a string format."""
@@ -130,6 +76,28 @@ class CustomX509Certificate:
             {self.serialize_extensions()}
         """
         return cert_data.strip()
+    
+    def serialize_json(self):
+        cert_data = {
+            'Version' : self.version,
+            'Serial Number': self.serial_number,
+            'Issuer' : self.issuer,
+            'subject' : self.subject,
+            'validity' : {
+                'Not Before' : time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.not_before)),
+                'Not After' :  time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.not_after))                            
+            },
+            'Public Key' : base64.b64encode(self.public_key).decode(),
+            'Signature' : base64.b64encode(self.signature).decode(),
+            'Extentions' : json.loads(self.serialize_extensions_json())
+        }
+
+        return json.dumps(cert_data,indent=4) + '\n'
+    
+    def serialize_extensions_json(self):
+        """Serialize all extensions into a JSON format."""
+        extensions_json = {ext.oid: {"value": ext.value, "critical": ext.critical} for ext in self.extensions}
+        return json.dumps(extensions_json)
 
     def serialize_extensions(self):
         """Serialize all extensions into a string format."""
