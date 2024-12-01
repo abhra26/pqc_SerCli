@@ -92,7 +92,7 @@ class CustomX509Certificate:
             'Extentions' : json.loads(self.serialize_extensions_json())
         }
 
-        return json.dumps(cert_data,indent=4) + '\n'
+        return json.dumps(cert_data,indent=4)
     
     def serialize_extensions_json(self):
         """Serialize all extensions into a JSON format."""
