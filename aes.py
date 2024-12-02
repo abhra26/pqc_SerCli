@@ -19,17 +19,17 @@ def encrypt_image(image_path, key, signer):
     encryptor = cipher.encryptor()
     
     # Encrypt the plaintext
-    ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+    ciphertext = encryptor.update(plaintext.encode()) + encryptor.finalize()
     
     # Get the authentication tag
     tag = encryptor.tag
 
-    hash = hashlib.sha256(ciphertext.encode()).hexdigest()
+    hash = hashlib.sha256(ciphertext).hexdigest()
     signature =  signer.sign(hash.encode())
 
     data = {
-        'iv' : iv,
-        'tag' : tag,
+        'iv' : base64.b64encode(iv).decode(),
+        'tag' : base64.b64encode(tag).decode(),
         'Ciphertext' : base64.b64encode(ciphertext).decode(),
         'Signature' : base64.b64encode(signature).decode()
     }
@@ -45,16 +45,16 @@ def encrypt_txt(file_path, key, signer):
     cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
     encryptor = cipher.encryptor()
 
-    ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+    ciphertext = encryptor.update(plaintext.encode()) + encryptor.finalize()
 
     tag = encryptor.tag
 
-    hash = hashlib.sha256(ciphertext.encode()).hexdigest()
+    hash = hashlib.sha256(ciphertext).hexdigest()
     signature =  signer.sign(hash.encode())
 
     data = {
-    'iv' : iv,
-    'tag' : tag,
+    'iv' : base64.b64encode(iv).decode(),
+    'tag' : base64.b64encode(tag).decode(),
     'Ciphertext' : base64.b64encode(ciphertext).decode(),
     'Signature' : base64.b64encode(signature).decode()
     }
@@ -65,8 +65,8 @@ def decrypt_txt(encrypted_data_json, key, verifier,SignPubKey):
     # Load encrypted data from JSON
     data = json.loads(encrypted_data_json)
     
-    iv = data['iv']
-    tag = data['tag']
+    iv = base64.b64decode(data['iv'].encode())
+    tag = base64.b64decode(data['tag'].encode())
     ciphertext = base64.b64decode(data['Ciphertext'].encode())
     signature = base64.b64decode(data['Signature'].encode())
 
