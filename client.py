@@ -1,12 +1,13 @@
 import socket
 import oqs
 from x509 import CustomX509Certificate
-import os
 import json
 import aes
 import base64
 import hashlib
 
+LOCALHOST = 'localhost'
+HOST = '192.168.137.197'
 
 signerUSR = oqs.Signature('Dilithium3')
 pubKeyUSR = signerUSR.generate_keypair()
@@ -22,20 +23,31 @@ client_cert = CustomX509Certificate(
 client_cert.add_extension("2.5.29.17", "DNS:www.myclient.com", critical=False)
 client_cert.sign()
 
-shared_secret = os.urandom(32)
 kemobj = oqs.KeyEncapsulation('Kyber768')
+
+# def pad_json(json_string):
+#     """Pad the JSON string with null characters to make its length a multiple of 256."""
+#     length = len(json_string)
+#     padding_needed = (256 - (length % 256)) % 256
+#     return json_string + '\0' * padding_needed
+
+# def sendall(json_string,conn):
+#     json_string = pad_json(json_string)
+#     for i in range(0,len(json_string),256):
+#         packet = json_string[i:i+256].encode()
+#         conn.sendall(packet)
 
 def start_client():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
-    client_socket.connect(('192.168.137.197', 65432))
+    client_socket.connect((LOCALHOST, 65433))
     
     # Receive server's certificate from server
 
     buffer =""
-
     while True:
          parts = client_socket.recv(65432).decode()
+         print(len(parts))
          if parts == '\0':
               break
          buffer += parts
