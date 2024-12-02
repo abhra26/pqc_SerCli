@@ -67,8 +67,8 @@ def decrypt_txt(encrypted_data_json, key, verifier,SignPubKey):
     
     iv = data['iv']
     tag = data['tag']
-    ciphertext = base64.b64decode(data['Ciphertext'])
-    signature = base64.b64decode(data['Signature'])
+    ciphertext = base64.b64decode(data['Ciphertext'].encode())
+    signature = base64.b64decode(data['Signature'].encode())
 
     # Verify the signature
     hash = hashlib.sha256(ciphertext).hexdigest()
