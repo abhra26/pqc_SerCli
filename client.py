@@ -3,7 +3,7 @@ import oqs
 from x509 import CustomX509Certificate
 import os
 import json
-import time
+import aes
 import base64
 import hashlib
 
@@ -28,34 +28,45 @@ kemobj = oqs.KeyEncapsulation('Kyber768')
 def start_client():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
-    client_socket.connect(('localhost', 65432))
+    client_socket.connect(('192.168.137.197', 65432))
     
     # Receive server's certificate from server
-    server_cert_data = json.loads(client_socket.recv(65536).decode())
+
+    buffer =""
+
+    while True:
+         parts = client_socket.recv(65432).decode()
+         if parts == '\0':
+              break
+         buffer += parts
+
+    server_cert_data = json.loads(buffer)
     
     print("Server Signature Public Key:")
     print(base64.b64decode(server_cert_data['Public Key'].encode()))
 
-    # Send client's certificate to the server
-    client_socket.sendall(client_cert.serialize_json().encode())
-    
-    # buffer = ""
-    # while True:
-    #     parts = client_socket.recv(4096).decode()
-    #     print(len(parts))
-    #     if not parts:
-    #         break
-    #     buffer += parts
+    server_signPubKey = base64.b64decode(server_cert_data['Public Key'].encode())
 
-    server_kem_cert = json.loads(client_socket.recv(65536).decode())
+    # # Send client's certificate to the server
+    client_socket.sendall(client_cert.serialize_json().encode())
+    client_socket.sendall('\0'.encode())
+
+    buffer = ""
+    while True:
+         parts = client_socket.recv(65432).decode()
+         if parts == '\0':
+              break
+         buffer += parts
+
+    server_kem_cert = json.loads(buffer)
 
     server_kemPubKey = base64.b64decode(server_kem_cert['Public Key'].encode())
     print('Server Encap Public Key:')
     print(server_kemPubKey)
 
-    ciphertext, plaintext = kemobj.encap_secret(server_kemPubKey)
+    ciphertext, shared_secret = kemobj.encap_secret(server_kemPubKey)
     print("Shared Secret:")
-    print(base64.b64encode(plaintext).decode())
+    print(base64.b64encode(shared_secret).decode())
     hashdata = hashlib.sha256(ciphertext).hexdigest()
     signature = signerUSR.sign(hashdata.encode())
 
@@ -65,6 +76,26 @@ def start_client():
     }
 
     client_socket.sendall(json.dumps(data).encode())
+    client_socket.sendall('\0'.encode())
+
+    buffer = ""
+    while True:
+         parts = client_socket.recv(65432).decode()
+         if parts == '\0':
+              break
+         buffer += parts
+
+    encrypted = json.loads(buffer)
+
+    ciphertext = encrypted['Ciphertext']
+    iv = encrypted['iv']
+    tag = encrypted['tag']
+    Signature = encrypted['Signature']
+
+    plaintext = aes.decrypt_txt(buffer,shared_secret,signerUSR,server_signPubKey)
+
+    print(plaintext)
+    
 
     client_socket.close()
 
